@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import contextlib
 import os
 import typing
 from typing import Iterator
@@ -28,7 +29,7 @@ def mitmproxy_dump_file_huristic(file_path: str) -> int:
         ):
             val += 50
         # if first character of the byte array is a digit
-        if data[0:1].decode("utf-8", "ignore").isdigit() is True:
+        if data[:1].decode("utf-8", "ignore").isdigit() is True:
             val += 5
         # if it contains the word status_code
         if b"status_code" in data:
@@ -102,6 +103,13 @@ class MitmproxyFlowWrapper:
     def get_response_body(self):
         return self.flow.response.content
 
+    def get_latency(self):
+        """Returns the latency in milliseconds."""
+        with contextlib.suppress(AttributeError):
+            if self.flow.response.timestamp_end and self.flow.request.timestamp_start:
+                return (self.flow.response.timestamp_end - self.flow.request.timestamp_start) * 1000
+        return 0
+
 
 class MitmproxyCaptureReader:
     def __init__(self, file_path, progress_callback=None):
@@ -118,9 +126,7 @@ class MitmproxyCaptureReader:
                         self.progress_callback(logfile.tell() / logfile_size)
                     if isinstance(f, http.HTTPFlow):
                         if f.response is None:
-                            print(
-                                "[warn] flow without response: {}".format(f.request.url)
-                            )
+                            print(f"[warn] flow without response: {f.request.url}")
                             continue
                         yield MitmproxyFlowWrapper(f)
             except FlowReadException as e:

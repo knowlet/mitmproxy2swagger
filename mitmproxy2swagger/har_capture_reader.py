@@ -25,7 +25,7 @@ def har_archive_heuristic(file_path: str) -> int:
         ):
             val += 25
         # sign of a JSON file
-        if data[0:1] == b"{":
+        if data[:1] == b"{":
             val += 23
         # sign of Chrome OR Firefox export
         if b'"WebInspector"' in data or b'"Firefox"' in data:
@@ -103,6 +103,10 @@ class HarFlowWrapper:
                 return None
             return self.flow["response"]["content"]["text"]
         return None
+
+    def get_latency(self):
+        """Returns the latency in milliseconds."""
+        return self.flow["time"] if "time" in self.flow else 0
 
 
 class HarCaptureReader:
